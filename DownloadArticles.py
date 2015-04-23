@@ -78,11 +78,12 @@ class Article(object):
         self.Keywords = tagList
         self.Abstract = abstract
 
-def getCitingArticles( article ):
+def getCitingArticles( article, pageLimit=2 ):
     """ Find the artciles and books that quote a given article and return them.
     Arguments
     ----------
-    An instance of Artice (@see Article) quotations of whihc are to be found.
+    article - An instance of Artice (@see Article) quotations of which are to be found.
+    pageLimit - int, how many pages of the results will be searched.
     
     Returns
     ----------
@@ -115,7 +116,7 @@ def getCitingArticles( article ):
     " Go through all the pages displaying the articles that cite the article. "
     citedByLinks = CitedByPattern.findall(the_page) # A list of links that take us to the pages displaying the articles that cite the articles displayed on the_page.
     citedByPageI = 0 # Page with the articles citing a given paper, ten per page.
-    while citedByPageI < 9999: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
+    while citedByPageI <= pageLimit: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
         citedByURL = HOME_URL + "scholar?start={}&".format(10*citedByPageI) # We'll display a website with articles that cite a given article.
         citedByURL += citedByLinks[articleID]
         citedBy_page = requests.get(citedByURL).text
@@ -130,7 +131,7 @@ def getCitingArticles( article ):
         
     return citingArticles, titlesCiting, yearsCiting
     
-def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=3000, title="", isbn="none"):
+def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=3000, title="", isbn="none", pageLimit=2):
     """ Find scientific articles that match given criteria on-line.
     
     Arguments
@@ -144,6 +145,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
         the articles.
     title - string with the title of the article.
     isbn - str with the ISBN of the publication.
+    pageLimit - int, how many pages of the results will be searched.
         
     Returns
     ----------
@@ -152,7 +154,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
     pageNo = 1 # Number of the page with results.
     
     " Go through all the result pages we might get. "
-    while pageNo < 9999: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
+    while pageNo <= pageLimit: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
         " Build the search URL. "
         if not title: # We aren't looking for a specific title.
             BASE_SEARCH_URL = "http://www.citeulike.org/search/all/page/{}?q=".format( pageNo ) # All the search criteria are appended to this.
@@ -280,7 +282,7 @@ if __name__=="__main__": # If this is run as a stand-alone script run the verifi
     " Go through all the pages displaying the articles that cite the article. "
     citedByPageI = 0 # Page with the articles citing a given paper, ten per page.
     citedByLinks = CitedByPattern.findall(the_page) # A list of links that take us to the pages displaying the articles that cite the articles displayed on the_page.
-    while citedByPageI < 9999: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
+    while citedByPageI <= 2: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
         citedByURL = HOME_URL + "scholar?start={}&".format(10*citedByPageI) # We'll display a website with articles that cite a given article.
         citedByURL += citedByLinks[articleID]
         citedBy_page = requests.get(citedByURL).text
