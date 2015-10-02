@@ -9,6 +9,15 @@ import urllib2, copy
 from bs4 import BeautifulSoup
 from urlparse import urljoin
 
+# what keywords to look out for
+keywords = [
+    'TerraPower',
+    'Bill Gates',
+    ]
+
+# this will bookmark pages of interest
+urlsOfInterest = []
+
 # start list of urls to initiate the search
 urls = [
 #    'https://en.wikipedia.org/wiki/Portal:Contents',
@@ -26,11 +35,18 @@ urls = [
 visited = copy.deepcopy(urls)
 
 # keep looping until there are no more sites to search or stopping criteria has been reached
-while (len(urls) > 0) and (len(visited) < 1000):
+while (len(urls) > 0) and (len(visited) < 10000):
     # skip over invalid links
     try:
         # attempt to access the source of the current url - treat the urls list as a stack
         currentContent = urllib2.urlopen(urls[0], timeout = 1).read()
+        
+        # search the contents for whatever may be of interest
+        for key in keywords:
+            if key in currentContent:
+                print key, urls[0]
+                if not urls[0] in urlsOfInterest:
+                    urlsOfInterest.append(urls[0])
     except:
         currentContent = ''
     
@@ -42,7 +58,7 @@ while (len(urls) > 0) and (len(visited) < 1000):
     soup = BeautifulSoup(currentContent)
     soup.prettify()
     
-    # find all urls
+    # find all urls available on this site
     for tag in soup.findAll('a',href=True):
         # make the url absolute (e.g. add https://en.wikipedia.org at the beginning)
         link = urljoin(visited[-1], tag['href'])
