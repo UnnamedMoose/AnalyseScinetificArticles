@@ -8,6 +8,7 @@ Created on Sun Apr 19 20:46:55 2015
 """
 
 import requests, re, difflib
+import Article
 
 " General regexes. "
 IntegersParern = re.compile("\d+") # Any integer.
@@ -31,53 +32,6 @@ YearPatternGoogle = re.compile('\,\s\d{4}[\s\-<]*')
 ArticleInfoPatternGoogle = re.compile('[\.\,\-\s\w]+\,\s\d{4}[\s\-<]*') # Will find the list of authors, journal, and year.
 CitedByNumberPattern = re.compile('Cited\sby\s\d+') # How many times the given article has been cited.
 
-class Article(object):
-    def __init__(self, title, authorList, year, journal, doi="", volume=-1, number=-1, tagList=[], abstract="", citeULikeID=-1):
-        """ Initialise an Article class that holds the information about a scientific
-        article.
-        
-        Arguments
-        ----------
-        title - str with the title of the artcile.
-        authorList - list of str with author names, can have initials.
-        year - int with the publishing year.
-        journal - str with the title of the journal where the article was published.
-        doi - str with the DOI (Digital Object Identifier) of the article.
-        volume - volume of the journal where the article was published.
-        number - issue of the journal where the article was published.
-        tagList - list of str with keywords of the article.
-        abstract - str with the abstract of the article.
-        citeULikeID - int with the ID from CiteULike.org.
-        
-        Guaranteed Attributes
-        ----------
-        Title - str with the title of the artcile.
-        Authors - list of str with author names, can have initials.
-        Year - int with the publishing year.
-        Journal - str with the title of the journal where the article was published.
-        
-        Optional Attributes
-        ----------
-        DOI - str with the DOI (Digital Object Identifier) of the article, e.g.
-            10.1103/physrev.28.727; empty string if not supplied.
-        Vol - volume of the journal where the article was published;
-            999 if unknown.
-        No - issue of the journal where the article was published; 999 if unknown.
-        Keywords - list of str with keywords of the article; empty list if unknown.
-        Abstract - str with the abstract of the article; empty string if unkown.
-        CiteULikeID - int with the ID from CiteULike.org.
-        """
-        self.CiteULikeID = citeULikeID
-        self.Title = title
-        self.Authors = authorList
-        self.Year = year
-        self.Journal = journal
-        self.DOI = doi
-        self.Vol = volume
-        self.No = number
-        self.Keywords = tagList
-        self.Abstract = abstract
-
 def getCitingArticles( article, pageLimit=2 ):
     """ Find the artciles and books that quote a given article and return them.
     Arguments
@@ -89,7 +43,7 @@ def getCitingArticles( article, pageLimit=2 ):
     ----------
     A list of Artciles that cite the input article.
     """
-    HOME_URL = "https://scholar.google.co.uk/" # Home of Google Scholar.
+    HOME_URL = "https://scholar.google.com/" # Home of Google Scholar.
     citingArticles = [] # List of articles that cite the input Article.
     
     " Search for the desired article. "
@@ -131,7 +85,7 @@ def getCitingArticles( article, pageLimit=2 ):
         
     return citingArticles, titlesCiting, yearsCiting
     
-def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=3000, title="", isbn="none", pageLimit=2):
+def getArticlesCiteULike(authors=[], keywords=[], yearStart=1800, yearEnd=3000, title="", isbn="none", pageLimit=2):
     """ Find scientific articles that match given criteria on-line.
     
     Arguments
@@ -183,7 +137,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
                 searchURL += "+"
             searchURL += "year%3A%5B{}+TO+{}%5D".format(yearStart,yearEnd)
             searchURL += "+isbn%3A{}".format(isbn)
-        
+
         " Perform the actual search. "
         the_page = requests.get(searchURL).text # Get the text version of the website. Use requests not urllib2 because the page will be too large for it.
         
@@ -199,7 +153,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
                     articleID = int(IntegersParern.findall(lines[i])[0])
                     firstArticle = False
                 else: # First add the artcile we've just parsed, then proceed to parsing the new one.
-                    articles.append( Article(articleID, articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract) )
+                    articles.append( Article.Article(articleID, articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract) )
                     articleID = int(IntegersParern.findall(lines[i])[0])
             if '<a class="title"' in lines[i]:
                 articleTitle = TitlePattern.findall(lines[i])[0].rstrip("</a></h2>").lstrip(";</span>")
@@ -236,7 +190,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
             if '<h3>Abstract</h3>' in lines[i]:
                 abstract = lines[i+1].lstrip("<p>").rstrip("</p>")
         # Add the last article.
-        articles.append( Article(articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract, articleID) )
+        articles.append( Article.Article(articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract, articleID) )
 
         pageNo += 1 # Go to the next results page.
         
@@ -251,11 +205,11 @@ if __name__=="__main__": # If this is run as a stand-alone script run the verifi
 #    articles = getArticlesCiteULike(authors, tags, years[0], years[1], isbn)
 
     " Example search for articles citing a given article. "
-    theArticle = Article("The Theory of Collectors in Gaseous Discharges", ["H.M. Mott-Smith", "Irving Langmuir"], 1926, "Physical Review", doi="10.1103/physrev.28.727", volume=28, number=4, citeULikeID=2534514)
+    theArticle = Article.Article("The Theory of Collectors in Gaseous Discharges", ["H.M. Mott-Smith", "Irving Langmuir"], 1926, "Physical Review", doi="10.1103/physrev.28.727", volume=28, number=4, citeULikeID=2534514)
     
-#    citingArticles, titlesCiting, yearsCiting = getCitingArticles(theArticle)
+    citingArticles, titlesCiting, yearsCiting = getCitingArticles(theArticle)
     
-    HOME_URL = "https://scholar.google.co.uk/" # Home of Google Scholar.
+    HOME_URL = "https://scholar.google.com/" # Home of Google Scholar.
     citingArticles = [] # List of articles that cite the input Article.
     
     " Search for the desired article. "
@@ -287,13 +241,13 @@ if __name__=="__main__": # If this is run as a stand-alone script run the verifi
         citedByURL += citedByLinks[articleID]
         citedBy_page = requests.get(citedByURL).text
         
-        titlesCiting = TitlePatternGoogle.findall(citedBy_page) # Titles of articles that quote the article.
-        yearsCiting = YearPatternGoogle.findall(citedBy_page)
+        titlesCiting = map(lambda x: x.lstrip("nossl=1\">").rstrip("</a></h3>"),TitlePatternGoogle.findall(citedBy_page)) # Titles of articles that quote the article.
+        yearsCiting = map(lambda x: x.lstrip(", ").rstrip(" -"),YearPatternGoogle.findall(citedBy_page))
         #TODO find the articles given by titlesCiting and yearsCiting on CiteULike and append them to citingArticles.
         for citingI in range(len(titlesCiting)): # Get every article that cites the article.
             candidateArticles = getArticlesCiteULike(yearStart=yearsCiting[citingI], yearEnd=yearsCiting[citingI], title=titlesCiting[citingI]) # This will return a list of candidate articles that match the search criteria. Find the one.
             currentBestCandidateArticleSimilarity = 0
-            for candidateI in range(len(candidateArticles)):
+            for candidateI in range(len(candidateArticles)): # There are many articles found on CiteULike that could be the current citing article - find the right one.
                 if difflib.SequenceMatcher(a=titlesCiting[citingI].lower(), b=candidateArticles[candidateI].Title.lower()).ratio() > currentBestCandidateArticleSimilarity:
                     currentBestCandidateArticleSimilarity = difflib.SequenceMatcher(a=titlesCiting[citingI].lower(), b=candidateArticles[candidateI].Title.lower()).ratio() # This is probably the citing article we're looking for.
         
