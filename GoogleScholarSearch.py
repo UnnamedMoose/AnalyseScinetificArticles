@@ -124,15 +124,23 @@ class GoogleScholarSearchEngine:
         ----------
         IOError when the connection to Google Scholar cannot be established.
         """
-        headers = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'}
+        headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
+       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+       'Accept-Encoding': 'none',
+       'Accept-Language': 'en-US,en;q=0.8',
+       'Connection': 'keep-alive'}
 
-        conn = httplib.HTTPConnection(self.SEARCH_HOST)
+        conn = httplib.HTTPConnection(self.SEARCH_HOST, timeout=30)
         conn.request("GET", url, body=None, headers=headers)
         resp = conn.getresponse()
+        results = [] # The list of Articles we'll return.
         
-        if resp.status==200:
+        if resp.status==302: # We got a redirect.
+            pass#print resp.geturl() # TODO handle this
+            print "Got error 302 - redirection."
+        elif resp.status==200:
             html = resp.read()
-            results = []
             html = html.decode('ascii', 'ignore') # Raw HTML file of the website with the search results.
             # Screen-scrape the result to obtain the publication information
             soup = BeautifulSoup(html)
@@ -190,7 +198,13 @@ class GoogleScholarSearchEngine:
                         pubJournalURL = 'Unavailable'
                     
                     " Get the abstract. "
-                    pubAbstract = record.find('div',attrs={'class':'gs_rs'}).text
+                    abstractDiv = record.find('div',attrs={'class':'gs_rs'}) # Abstract info sits here.
+                    if not abstractDiv is None:
+                        pubAbstract = abstractDiv.text
+                    else:
+                        pubAbstract = "Abstract unavailable"
+                        print record#TODO see why this might trigger and maybe filter out such cases
+                        print "-"*10
                     
                     " Save the results. "
                     results.append( Article.Article(pubTitle,map(str,pubAuthors.split(',')),pubJournalYear,pubJournalName,tagList=searchTerms,abstract=pubAbstract) )
@@ -201,9 +215,10 @@ class GoogleScholarSearchEngine:
                     results[-1].relatedArticlesURL = relatedArticlesURL
                     # This might be useful to something, e.g. seeing whcih publications have the most impact.
                     results[-1].pubNoCitations = pubNoCitations
-            return results
         else:
             raise IOError("Connection can't be established. Error code: {}, Reason: {}".format(resp.status,resp.reason))
+            
+        return results # If everything's gone smoothly...
 
 if __name__ == '__main__':
     search = GoogleScholarSearchEngine()
@@ -211,4 +226,4 @@ if __name__ == '__main__':
     for pub in pubs:
         print pub
         # This is how to get the citing abd related Articles.
-#        search.getArticlesFromPage(pubs.citingArticlesURL,["breast cancer", "gene"],)
+#        search.getArticlesFromPage(pub.citingArticlesURL,["breast cancer", "gene"],)
