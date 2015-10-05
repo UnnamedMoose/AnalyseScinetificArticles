@@ -8,12 +8,13 @@ I've updated it to BeautifulSoup4 and current syntax of Google Scholar source.
 Also started saving the results in a class object for compatibility with other code.
 
 @author: Alek
-@version: 1.0.1
-@since: Mon  5 Oct 15 18:38 2015
+@version: 1.0.2
+@since: Mon  5 Oct 2015
 
 CHANGELOG:
-Sat  3 Oct 15 13:06 - 1.0.0 - Alek - Issued the first version based on a class from the Internet.
-Mon  5 Oct 15 18:38 - 1.0.1 - Alek - Now don't try to parse citations.
+Sat  3 Oct 2015 - 1.0.0 - Alek - Issued the first version based on a class from the Internet.
+Mon  5 Oct 2015 - 1.0.1 - Alek - Now don't try to parse citations.
+                - 1.0.2 - Alek - Now convert authors' list to str from Unicode.
 """
 import httplib, urllib, re
 from bs4 import BeautifulSoup
@@ -192,7 +193,7 @@ class GoogleScholarSearchEngine:
                     pubAbstract = record.find('div',attrs={'class':'gs_rs'}).text
                     
                     " Save the results. "
-                    results.append( Article.Article(pubTitle,pubAuthors.split(','),pubJournalYear,pubJournalName,tagList=searchTerms,abstract=pubAbstract) )
+                    results.append( Article.Article(pubTitle,map(str,pubAuthors.split(',')),pubJournalYear,pubJournalName,tagList=searchTerms,abstract=pubAbstract) )
                     # All the URLs.
                     results[-1].fullURL = fullURL
                     results[-1].pubURL = pubURL
