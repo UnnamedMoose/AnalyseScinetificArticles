@@ -47,21 +47,21 @@ visited = copy.deepcopy(urls)
 # keep looping until there are no more sites to search or stopping criteria has been reached
 while (len(urls) > 0) and (len(visited) < 10000):
     # skip over invalid links
-    try:
-        # request the page, supply extra config stuff found on the web
-        req = urllib2.Request(urls[0], headers=hdrs)
-        
-        # attempt to access the source of the current url - treat the urls list as a stack
-        currentContent = urllib2.urlopen(req, timeout = 10).read()
-        
-        # search the contents for whatever may be of interest
-        for key in keywords:
-            if key in currentContent:
-                print key, urls[0]
-                if not urls[0] in urlsOfInterest:
-                    urlsOfInterest.append(urls[0])
-    except:
-        currentContent = ''
+#    try:
+    # request the page, supply extra config stuff found on the web
+    req = urllib2.Request(urls[0], headers=hdrs)
+    
+    # attempt to access the source of the current url - treat the urls list as a stack
+    currentContent = urllib2.urlopen(req, timeout = 10).read()
+    
+    # search the contents for whatever may be of interest
+    for key in keywords:
+        if key in currentContent:
+            print key, urls[0]
+            if not urls[0] in urlsOfInterest:
+                urlsOfInterest.append(urls[0])
+#    except:
+#        currentContent = ''
     
     # remove the current url from the list of sites to search
     visited.append(urls[0])
