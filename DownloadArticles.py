@@ -8,6 +8,9 @@ Created on Sun Apr 19 20:46:55 2015
 """
 
 import requests, re, difflib
+import Article, GoogleScholarSearch
+
+scholarSearchEngine = GoogleScholarSearch.GoogleScholarSearchEngine() # Convenient to search through Google Scholar.
 
 " General regexes. "
 IntegersParern = re.compile("\d+") # Any integer.
@@ -31,107 +34,7 @@ YearPatternGoogle = re.compile('\,\s\d{4}[\s\-<]*')
 ArticleInfoPatternGoogle = re.compile('[\.\,\-\s\w]+\,\s\d{4}[\s\-<]*') # Will find the list of authors, journal, and year.
 CitedByNumberPattern = re.compile('Cited\sby\s\d+') # How many times the given article has been cited.
 
-class Article(object):
-    def __init__(self, title, authorList, year, journal, doi="", volume=-1, number=-1, tagList=[], abstract="", citeULikeID=-1):
-        """ Initialise an Article class that holds the information about a scientific
-        article.
-        
-        Arguments
-        ----------
-        title - str with the title of the artcile.
-        authorList - list of str with author names, can have initials.
-        year - int with the publishing year.
-        journal - str with the title of the journal where the article was published.
-        doi - str with the DOI (Digital Object Identifier) of the article.
-        volume - volume of the journal where the article was published.
-        number - issue of the journal where the article was published.
-        tagList - list of str with keywords of the article.
-        abstract - str with the abstract of the article.
-        citeULikeID - int with the ID from CiteULike.org.
-        
-        Guaranteed Attributes
-        ----------
-        Title - str with the title of the artcile.
-        Authors - list of str with author names, can have initials.
-        Year - int with the publishing year.
-        Journal - str with the title of the journal where the article was published.
-        
-        Optional Attributes
-        ----------
-        DOI - str with the DOI (Digital Object Identifier) of the article, e.g.
-            10.1103/physrev.28.727; empty string if not supplied.
-        Vol - volume of the journal where the article was published;
-            999 if unknown.
-        No - issue of the journal where the article was published; 999 if unknown.
-        Keywords - list of str with keywords of the article; empty list if unknown.
-        Abstract - str with the abstract of the article; empty string if unkown.
-        CiteULikeID - int with the ID from CiteULike.org.
-        """
-        self.CiteULikeID = citeULikeID
-        self.Title = title
-        self.Authors = authorList
-        self.Year = year
-        self.Journal = journal
-        self.DOI = doi
-        self.Vol = volume
-        self.No = number
-        self.Keywords = tagList
-        self.Abstract = abstract
-
-def getCitingArticles( article, pageLimit=2 ):
-    """ Find the artciles and books that quote a given article and return them.
-    Arguments
-    ----------
-    article - An instance of Artice (@see Article) quotations of which are to be found.
-    pageLimit - int, how many pages of the results will be searched.
-    
-    Returns
-    ----------
-    A list of Artciles that cite the input article.
-    """
-    HOME_URL = "https://scholar.google.co.uk/" # Home of Google Scholar.
-    citingArticles = [] # List of articles that cite the input Article.
-    
-    " Search for the desired article. "
-    searchURL = HOME_URL + "scholar?hl=en&q=" # Now we're searching for articles.
-    searchURL += theArticle.Title # Search by title.
-    the_page = requests.get(searchURL).text # Get the text version of the website. Use requests not urllib2 because the page will be too large for it.
-
-    theArticleInfos = ArticleInfoPatternGoogle.findall(the_page) # Mixes of years, authors, and journal names of the Scholar search results looking for the input article.
-    howManyTimesCited = CitedByNumberPattern.findall(the_page) # See how many times every article has been cited.
-    howManyTimesCited = map(lambda x: int(x.lstrip("Cited by ")), howManyTimesCited) # Make it into integers.
-    
-    # Find the article from the many that will be displayed - will define articleID.
-    articleID = 0 # Which article from the_page we're looking at.
-    currentMaxCited = howManyTimesCited[ articleID ]
-    currentHighestAuthorSimilarity = 0
-    for i in range(len(howManyTimesCited)): # Articles that we have to look at to match to the article.
-        if str(theArticle.Year) in theArticleInfos[i]: # This article is from the same year, promising.
-            theArticleInfo = theArticleInfos[articleID].replace( str(theArticle.Year), "" )
-            if difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b=theArticleInfo.lower()).ratio() > currentHighestAuthorSimilarity: # The authors of this article look more like the authors of the input article.
-                currentHighestAuthorSimilarity = difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b=theArticleInfo.lower()).ratio()
-                if howManyTimesCited[i] > currentMaxCited: # We're probably after the popular articles. Sometimes will get copies of the original article with fewer citations.
-                    articleID = i # This is probably the article we're after.
-
-    " Go through all the pages displaying the articles that cite the article. "
-    citedByLinks = CitedByPattern.findall(the_page) # A list of links that take us to the pages displaying the articles that cite the articles displayed on the_page.
-    citedByPageI = 0 # Page with the articles citing a given paper, ten per page.
-    while citedByPageI <= pageLimit: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
-        citedByURL = HOME_URL + "scholar?start={}&".format(10*citedByPageI) # We'll display a website with articles that cite a given article.
-        citedByURL += citedByLinks[articleID]
-        citedBy_page = requests.get(citedByURL).text
-        
-        titlesCiting = TitlePatternGoogle.findall(citedBy_page) # Titles of articles that quote the article.
-        yearsCiting = YearPatternGoogle.findall(citedBy_page)
-    
-        
-        #TODO find the articles given by titlesCiting and yearsCiting on CiteULike and append them to citingArticles.
-        
-        citedByPageI += 1 # Go to the next results page.
-        
-    return citingArticles, titlesCiting, yearsCiting
-    
-def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=3000, title="", isbn="none", pageLimit=2):
+def getArticlesCiteULike(authors=[], keywords=[], yearStart=1800, yearEnd=3000, title="", isbn="none", pageLimit=2):
     """ Find scientific articles that match given criteria on-line.
     
     Arguments
@@ -183,7 +86,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
                 searchURL += "+"
             searchURL += "year%3A%5B{}+TO+{}%5D".format(yearStart,yearEnd)
             searchURL += "+isbn%3A{}".format(isbn)
-        
+
         " Perform the actual search. "
         the_page = requests.get(searchURL).text # Get the text version of the website. Use requests not urllib2 because the page will be too large for it.
         
@@ -199,7 +102,7 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
                     articleID = int(IntegersParern.findall(lines[i])[0])
                     firstArticle = False
                 else: # First add the artcile we've just parsed, then proceed to parsing the new one.
-                    articles.append( Article(articleID, articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract) )
+                    articles.append( Article.Article(articleID, articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract) )
                     articleID = int(IntegersParern.findall(lines[i])[0])
             if '<a class="title"' in lines[i]:
                 articleTitle = TitlePattern.findall(lines[i])[0].rstrip("</a></h2>").lstrip(";</span>")
@@ -236,65 +139,46 @@ def getArticlesCiteULike(authors=[""], keywords=[""], yearStart=1800, yearEnd=30
             if '<h3>Abstract</h3>' in lines[i]:
                 abstract = lines[i+1].lstrip("<p>").rstrip("</p>")
         # Add the last article.
-        articles.append( Article(articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract, articleID) )
+        articles.append( Article.Article(articleTitle, authors, year, journalTitle, doi, volume, number, tags, abstract, articleID) )
 
         pageNo += 1 # Go to the next results page.
         
     return articles
 
 if __name__=="__main__": # If this is run as a stand-alone script run the verification/example searches.
-#    " Example search for many articles. "
+    " Example search for many articles following search terms. "
 #    authors = ["langmuir", "tonks"] # Author names.
 #    tags = ["langmuir", "probe"] # Tags we want to look for.
 #    years = (1900,2015) # Year brackets we're interested in.
 #    isbn = "none"
-#    articles = getArticlesCiteULike(authors, tags, years[0], years[1], isbn)
+#    articles = getArticlesCiteULike(authors, tags, years[0], years[1], isbn) # One way, seems to be more restrictive because we can specify additional criteria, like min and max year etc.
+#    article = scholarSearchEngine.search(tags) # Another way, also works.
 
-    " Example search for articles citing a given article. "
-    theArticle = Article("The Theory of Collectors in Gaseous Discharges", ["H.M. Mott-Smith", "Irving Langmuir"], 1926, "Physical Review", doi="10.1103/physrev.28.727", volume=28, number=4, citeULikeID=2534514)
-    
-#    citingArticles, titlesCiting, yearsCiting = getCitingArticles(theArticle)
-    
-    HOME_URL = "https://scholar.google.co.uk/" # Home of Google Scholar.
-    citingArticles = [] # List of articles that cite the input Article.
-    
     " Search for the desired article. "
-    searchURL = HOME_URL + "scholar?hl=en&q=" # Now we're searching for articles.
-    searchURL += theArticle.Title # Search by title.
-    the_page = requests.get(searchURL).text # Get the text version of the website. Use requests not urllib2 because the page will be too large for it.
-
-    theArticleInfos = ArticleInfoPatternGoogle.findall(the_page) # Mixes of years, authors, and journal names of the Scholar search results looking for the input article.
-    howManyTimesCited = CitedByNumberPattern.findall(the_page) # See how many times every article has been cited.
-    howManyTimesCited = map(lambda x: int(x.lstrip("Cited by ")), howManyTimesCited) # Make it into integers.
+    theArticle = Article.Article("The Theory of Collectors in Gaseous Discharges", ["H.M. Mott-Smith", "Irving Langmuir"], 1926, "Physical Review", doi="10.1103/physrev.28.727", volume=28, number=4, citeULikeID=2534514)
+    
+    # Get all the articles from the page when we look for the title.
+    searchURL = "/scholar?hl=en&q=" # Now we're searching for articles.
+    searchURL += theArticle.Title.replace(" ","%20") # Search by title. We can't have space in there.
+    papers = scholarSearchEngine.getArticlesFromPage(searchURL, ["Mock","terms"])
     
     # Find the article from the many that will be displayed - will define articleID.
     articleID = 0 # Which article from the_page we're looking at.
-    currentMaxCited = howManyTimesCited[ articleID ]
+    currentMaxCited = 0
     currentHighestAuthorSimilarity = 0
-    for i in range(len(howManyTimesCited)): # Articles that we have to look at to match to the article.
-        if str(theArticle.Year) in theArticleInfos[i]: # This article is from the same year, promising.
-            theArticleInfo = theArticleInfos[articleID].replace( str(theArticle.Year), "" )
-            if difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b=theArticleInfo.lower()).ratio() > currentHighestAuthorSimilarity: # The authors of this article look more like the authors of the input article.
-                currentHighestAuthorSimilarity = difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b=theArticleInfo.lower()).ratio()
-                if howManyTimesCited[i] > currentMaxCited: # We're probably after the popular articles. Sometimes will get copies of the original article with fewer citations.
+    for i in range(len(papers)): # Articles that we have to look at to match to the article.
+        if theArticle.Year==papers[i].Year: # This article is from the same year, promising.
+            if difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b="".join(papers[i].Authors).lower()).ratio() > currentHighestAuthorSimilarity: # The authors of this article look more like the authors of the input article.
+                currentHighestAuthorSimilarity = difflib.SequenceMatcher(a="".join(theArticle.Authors).lower(), b="".join(papers[i].Authors).lower()).ratio()
+                if papers[i].pubNoCitations> currentMaxCited: # We're probably after the popular articles. Sometimes will get copies of the original article with fewer citations.
                     articleID = i # This is probably the article we're after.
-                
-    " Go through all the pages displaying the articles that cite the article. "
-    citedByPageI = 0 # Page with the articles citing a given paper, ten per page.
-    citedByLinks = CitedByPattern.findall(the_page) # A list of links that take us to the pages displaying the articles that cite the articles displayed on the_page.
-    while citedByPageI <= 2: # Unlikely that we'll get so many results but we don't want infinite loops, do we?
-        citedByURL = HOME_URL + "scholar?start={}&".format(10*citedByPageI) # We'll display a website with articles that cite a given article.
-        citedByURL += citedByLinks[articleID]
-        citedBy_page = requests.get(citedByURL).text
-        
-        titlesCiting = TitlePatternGoogle.findall(citedBy_page) # Titles of articles that quote the article.
-        yearsCiting = YearPatternGoogle.findall(citedBy_page)
-        #TODO find the articles given by titlesCiting and yearsCiting on CiteULike and append them to citingArticles.
-        for citingI in range(len(titlesCiting)): # Get every article that cites the article.
-            candidateArticles = getArticlesCiteULike(yearStart=yearsCiting[citingI], yearEnd=yearsCiting[citingI], title=titlesCiting[citingI]) # This will return a list of candidate articles that match the search criteria. Find the one.
-            currentBestCandidateArticleSimilarity = 0
-            for candidateI in range(len(candidateArticles)):
-                if difflib.SequenceMatcher(a=titlesCiting[citingI].lower(), b=candidateArticles[candidateI].Title.lower()).ratio() > currentBestCandidateArticleSimilarity:
-                    currentBestCandidateArticleSimilarity = difflib.SequenceMatcher(a=titlesCiting[citingI].lower(), b=candidateArticles[candidateI].Title.lower()).ratio() # This is probably the citing article we're looking for.
-        
-        citedByPageI += 1 # Go to the next results page.
+    print "Found:\n{}\n when looking for:\n{}.".format(papers[articleID],theArticle)
+    
+    " Get articles citing theArticle. "
+    citingArticles = [] # Collect citing articles from all the result pages.
+    citingArticlesURLParts = papers[articleID].citingArticlesURL.split("?") # Need to split this to be able to display different result pages.
+    for startArticleIndex in range(0,papers[articleID].pubNoCitations,20): # The first article to be displayed on the Scholar page. Go every 20 articles to limit the number of requests we send.
+        temp = scholarSearchEngine.getArticlesFromPage(citingArticlesURLParts[0]+"?"+"start={}&num=20&".format(startArticleIndex)+citingArticlesURLParts[1],papers[articleID].Keywords)
+        citingArticles.extend(temp) # Add articles from this page to the results.
+    
+#    relatedArticles = scholarSearchEngine.getArticlesFromPage(papers[articleID].relatedArticlesURL,papers[articleID].Keywords)
